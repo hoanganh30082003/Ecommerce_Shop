@@ -57,7 +57,7 @@ export const Header = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 40,
-        paddingVertical: 20,
+        paddingVertical: 5,
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
         backgroundColor: 'white',
