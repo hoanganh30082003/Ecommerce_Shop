@@ -1,10 +1,21 @@
 const userService = require('../service/userService');
 
-// Create user
-const createUser = async (req, res) => {
+// Đăng ký
+const register = async (req, res) => {
   try {
-    const newUser = await userService.createUser(req.body);
-    res.status(201).json({ message: 'User created', data: newUser });
+    const newUser = await userService.register(req.body);
+    res.status(201).json({ message: 'User registered', data: newUser });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Đăng nhập
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const { user, token } = await userService.login(email, password);
+    res.status(200).json({ message: 'Login successful', token, user });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -54,7 +65,8 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = {
-  createUser,
+  register,
+  login,
   getAllUsers,
   getUserById,
   updateUser,

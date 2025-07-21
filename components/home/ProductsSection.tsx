@@ -1,131 +1,133 @@
-import { Dimensions, FlatList, Image, StyleSheet, View } from 'react-native';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { StyledText } from '../StyledText';
 
 interface Product {
-    id: string;
+    _id: string;
     name: string;
-    image: string;
-    category: string;
-    description: string;
-    price: number;
-    originalPrice?: number;
-    stockStatus: 'in stock' | 'out of stock';
+    images?: string[];
+    description?: string;
+    price?: number;
+    fixed_combo_price?: number;
+    type?: string;
+    // ... các trường khác nếu cần
 }
 
 interface EmptyProduct {
-    id: string;
+    _id: string;
     empty: true;
 }
 
 type ProductListItem = Product | EmptyProduct;
-
-const mockProducts: Product[] = [
-    { id: '1', name: 'BKID Pipe', image: 'https://picsum.photos/seed/pipe/400/400', category: 'Accessories', description: 'Description of this product.', price: 0, stockStatus: 'out of stock' },
-    { id: '2', name: 'Bang and Olufsen Speaker', image: 'https://picsum.photos/seed/speaker/400/400', category: 'Electronics', description: 'Description of this product.', price: 74.85, originalPrice: 86.85, stockStatus: 'in stock' },
-    { id: '3', name: 'Audio Technica Turn-table', image: 'https://picsum.photos/seed/turntable/400/400', category: 'Electronics', description: 'Description of this product.', price: 0, stockStatus: 'out of stock' },
-    { id: '4', name: 'Monocle Sneakers', image: 'https://picsum.photos/seed/sneakers/400/400', category: 'Electronics', description: 'Description of this product.', price: 0, stockStatus: 'out of stock' },
-    { id: '5', name: 'Classic Gold Watch', image: 'https://picsum.photos/seed/watch/400/400', category: 'Watches', description: 'Description of this product.', price: 250, stockStatus: 'in stock' },
-    { id: '6', name: 'Smart Washer', image: 'https://picsum.photos/seed/washer/400/400', category: 'Appliances', description: 'Description of this product.', price: 899.99, stockStatus: 'in stock' },
-];
 
 const formatData = (data: Product[], numColumns: number): ProductListItem[] => {
     const dataCopy: ProductListItem[] = [...data];
     const numberOfFullRows = Math.floor(dataCopy.length / numColumns);
     let numberOfElementsLastRow = dataCopy.length - (numberOfFullRows * numColumns);
     while (numberOfElementsLastRow !== numColumns && numberOfElementsLastRow !== 0) {
-      dataCopy.push({ id: `blank-${numberOfElementsLastRow}`, empty: true });
+      dataCopy.push({ _id: `blank-${numberOfElementsLastRow}`, empty: true });
       numberOfElementsLastRow++;
     }
     return dataCopy;
 };
 
+const DEFAULT_IMAGE = 'https://th.bing.com/th/id/OIP.N6K53QELIRhSFZxxhaz2SwHaHa?w=199&h=199&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3';
+
 const ProductCard = ({ item }: { item: ProductListItem }) => {
     if ('empty' in item && item.empty) {
         return <View style={[styles.productCard, styles.itemInvisible]} />;
     }
-
     const product = item as Product;
-
-    const renderPrice = () => {
-        if (product.stockStatus === 'out of stock') {
-            return <View style={styles.outOfStockButton}><StyledText style={styles.outOfStockText}>Out of stock</StyledText></View>
-        }
-        if (product.originalPrice) {
-            const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-            return (
-                <View style={styles.priceContainer}>
-                    <StyledText style={styles.originalPrice}>${product.originalPrice.toFixed(2)}</StyledText>
-                    <View style={styles.discountBadge}><StyledText style={styles.discountText}>%{discount}</StyledText></View>
-                    <StyledText style={styles.finalPrice}>${product.price.toFixed(2)}</StyledText>
-                </View>
-            )
-        }
-        return <StyledText style={styles.finalPrice}>${product.price.toFixed(2)}</StyledText>
-    }
-
+    const [imgSrc, setImgSrc] = React.useState(product.images?.[0] || DEFAULT_IMAGE);
+    const handleAddToCart = async () => {
+      const user_id = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+      if (!user_id) {
+        Alert.alert('Bạn cần đăng nhập để thêm vào giỏ hàng!');
+        return;
+      }
+      try {
+        await axios.post('http://localhost:9999/cart/add', {
+          user_id,
+          product_id: product._id,
+          variant: {}, // Nếu có variant thì truyền vào, ở đây để rỗng
+          quantity: 1
+        });
+        Alert.alert('Đã thêm vào giỏ hàng!');
+      } catch (err: any) {
+        Alert.alert('Lỗi khi thêm vào giỏ hàng', err?.response?.data?.error || 'Lỗi không xác định');
+      }
+    };
     return (
         <View style={styles.productCard}>
-            <Image source={{ uri: product.image }} style={styles.productImage} />
+            <Image
+                source={{ uri: imgSrc }}
+                style={styles.productImage}
+                onError={() => setImgSrc(DEFAULT_IMAGE)}
+            />
             <View style={styles.productInfo}>
-                <View style={styles.categoryTag}>
-                    <StyledText style={styles.categoryText}>{product.category}</StyledText>
-                </View>
                 <StyledText style={styles.productName}>{product.name}</StyledText>
                 <StyledText style={styles.productDescription}>{product.description}</StyledText>
-                {renderPrice()}
+                <StyledText style={styles.finalPrice}>{product.price?.toLocaleString() || product.fixed_combo_price?.toLocaleString() || 0} đ</StyledText>
+                <TouchableOpacity
+                  style={styles.addToCartBtn}
+                  onPress={handleAddToCart}
+                >
+                  <StyledText style={styles.addToCartText}>+ Thêm vào giỏ</StyledText>
+                </TouchableOpacity>
             </View>
         </View>
     );
 };
 
 const { width } = Dimensions.get('window');
-// Recalculate for 4 columns: 24 padding on each side, 20 gap between items (3 gaps total)
-const cardWidth = (width - (24 * 2) - (20 * 3)) / 4; 
+const cardWidth = (width - (24 * 2) - (20 * 3)) / 4;
 
-export const ProductsSection = () => (
-    <View style={styles.productsSection}>
-        <FlatList
-            data={formatData(mockProducts, 4)}
-            renderItem={({ item }) => <ProductCard item={item} />}
-            keyExtractor={item => item.id}
-            numColumns={4}
-            columnWrapperStyle={styles.row}
-            contentContainerStyle={styles.productList}
-         />
-    </View>
-);
+export const ProductsSection = () => {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        axios.get('http://localhost:9999/product')
+            .then(res => setProducts(res.data.data))
+            .catch(() => setProducts([]))
+            .finally(() => setLoading(false));
+    }, []);
+    if (loading) return <ActivityIndicator size="large" style={{ marginTop: 40 }} />;
+    return (
+        <View style={styles.productsSection}>
+            <FlatList
+                data={formatData(products, 4)}
+                renderItem={({ item }) => <ProductCard item={item} />}
+                keyExtractor={item => (item as any)._id}
+                numColumns={4}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.productList}
+            />
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     productsSection: {
         paddingVertical: 20,
     },
-    productsTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-    },
-    productsSubtitle: {
-        fontSize: 16,
-        color: 'gray',
-        marginBottom: 20,
-    },
-    productList: {
-        // No specific styles needed here now that we use FlatList's contentContainerStyle
-    },
+    productList: {},
     row: {
         justifyContent: 'space-between',
     },
     productCard: {
         width: cardWidth,
         marginBottom: 20,
-        borderRadius: 8,
+        borderRadius: 16,
         overflow: 'hidden',
-        elevation: 3,
+        elevation: 5,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        borderWidth: 0,
+        backgroundColor: '#fff',
+        alignItems: 'center',
     },
     itemInvisible: {
         backgroundColor: 'transparent',
@@ -135,70 +137,45 @@ const styles = StyleSheet.create({
     },
     productImage: {
         width: '100%',
-        height: 200,
+        height: 160,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        resizeMode: 'cover',
     },
     productInfo: {
         padding: 15,
         backgroundColor: 'white',
-    },
-    categoryTag: {
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 20,
-        paddingVertical: 4,
-        paddingHorizontal: 10,
-        alignSelf: 'flex-start',
-        marginBottom: 10,
-    },
-    categoryText: {
-        fontSize: 12,
-        color: '#555',
+        alignItems: 'center',
     },
     productName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginVertical: 5,
-        color: '#000',
-    },
-    productDescription: {
-        fontSize: 14,
-        color: 'gray',
-        marginBottom: 15,
-    },
-    priceContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    originalPrice: {
-        textDecorationLine: 'line-through',
-        color: 'gray',
-        fontSize: 14,
-    },
-    discountBadge: {
-        backgroundColor: '#ff4d4d',
-        borderRadius: 4,
-        paddingVertical: 2,
-        paddingHorizontal: 6,
-        marginHorizontal: 8,
-    },
-    discountText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    finalPrice: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#000',
+        marginVertical: 5,
+        color: '#222',
+        textAlign: 'center',
     },
-    outOfStockButton: {
-        backgroundColor: '#f5f5f5',
-        borderRadius: 8,
-        paddingVertical: 10,
-        alignItems: 'center',
-    },
-    outOfStockText: {
+    productDescription: {
+        fontSize: 13,
         color: '#888',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    finalPrice: {
+        fontSize: 18,
         fontWeight: 'bold',
+        color: '#e53935',
+        marginBottom: 8,
+    },
+    addToCartBtn: {
+        backgroundColor: '#007bff',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        marginTop: 6,
+    },
+    addToCartText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
 }); 

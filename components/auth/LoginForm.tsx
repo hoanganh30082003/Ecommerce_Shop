@@ -1,16 +1,37 @@
+import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = () => {
-    // Handle login here
-    const data = { email, password };
-    console.log(data);
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert('Vui lòng nhập email và mật khẩu!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await axios.post('http://localhost:9999/user/login', { email, password });
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        if (res.data.user && res.data.user._id) {
+          localStorage.setItem('user_id', res.data.user._id);
+        }
+        Alert.alert('Đăng nhập thành công!');
+        router.push('/');
+      } else {
+        Alert.alert('Đăng nhập thất bại!');
+      }
+    } catch (err: any) {
+      Alert.alert('Đăng nhập thất bại', err?.response?.data?.error || 'Lỗi không xác định');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,8 +63,8 @@ const LoginForm = () => {
               secureTextEntry
             />
           </View>
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Đang đăng nhập...' : 'Sign In'}</Text>
           </TouchableOpacity>
           <View style={styles.footer}>
             <Text style={{ color: '#888' }}>Don't have an account?</Text>
@@ -98,10 +119,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 32,
-    alignItems: 'center',
-    gap: 8,
   },
   loginLink: {
     color: '#007bff',

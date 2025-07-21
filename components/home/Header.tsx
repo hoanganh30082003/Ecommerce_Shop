@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { StyledText } from '../StyledText';
@@ -18,6 +19,9 @@ const IconButton = ({ children, onPress }: { children: React.ReactNode, onPress?
 }
 
 export const Header = () => {
+    const router = useRouter();
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+
     return (
     <View style={styles.header}>
       <View style={styles.leftContainer}>
@@ -39,13 +43,24 @@ export const Header = () => {
             <Feather name="search" size={20} color="gray" style={styles.searchIcon} />
             <TextInput style={styles.search} placeholder="Search..." placeholderTextColor="gray"/>
         </View>
-        <IconButton>
+        <IconButton onPress={() => router.push('/cart')}>
           <Feather name="shopping-bag" size={24} color="black" />
         </IconButton>
-        <Pressable style={styles.loginButton}>
-          <Feather name="arrow-right" size={16} color="white" style={{ marginRight: 5 }}/>
-          <StyledText style={styles.loginButtonText}>Login</StyledText>
-        </Pressable>
+        {!isLoggedIn ? (
+          <Pressable style={styles.loginButton} onPress={() => router.push('/login')}>
+            <Feather name="arrow-right" size={16} color="white" style={{ marginRight: 5 }}/>
+            <StyledText style={styles.loginButtonText}>Login</StyledText>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.loginButton} onPress={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user_id');
+            window.location.reload();
+          }}>
+            <Feather name="log-out" size={16} color="white" style={{ marginRight: 5 }}/>
+            <StyledText style={styles.loginButtonText}>Logout</StyledText>
+          </Pressable>
+        )}
       </View>
     </View>
   );

@@ -1,18 +1,36 @@
+import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const RegisterForm = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = () => {
-    // Handle registration here
-    const data = { fullName, email, password, phone };
-    console.log(data);
+  const handleSubmit = async () => {
+    if (!fullName || !email || !password) {
+      Alert.alert('Vui lòng nhập đầy đủ thông tin!');
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.post('http://localhost:9999/user/register', {
+        full_name: fullName,
+        email,
+        password,
+        phone
+      });
+      Alert.alert('Đăng ký thành công!');
+      router.push('/login');
+    } catch (err: any) {
+      Alert.alert('Đăng ký thất bại', err?.response?.data?.error || 'Lỗi không xác định');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,8 +81,8 @@ const RegisterForm = () => {
               keyboardType="phone-pad"
             />
           </View>
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Sign Up</Text>
+          <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Đang đăng ký...' : 'Sign Up'}</Text>
           </TouchableOpacity>
           <View style={styles.footer}>
             <Text style={{ color: '#888' }}>Already have an account?</Text>
